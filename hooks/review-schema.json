@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["severity", "issues", "suggestions"],
+  "properties": {
+    "severity": {
+      "type": "string",
+      "enum": ["LGTM", "MINOR", "MAJOR"],
+      "description": "LGTM = no issues; MINOR = addressable issues, continue; MAJOR = critical issues requiring attention"
+    },
+    "issues": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "List of concrete issues found (bugs, security problems, logical flaws, missing cases)"
+    },
+    "suggestions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Optional improvements (not blockers)"
+    }
+  }
+}

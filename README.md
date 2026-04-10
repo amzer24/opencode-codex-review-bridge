@@ -1,25 +1,84 @@
-# OpenCode-Codex Review Bridge (OCRB)
+<p align="center">
+  <h1 align="center">OpenCode-Codex Review Bridge</h1>
+  <p align="center">
+    <strong>Codex reviews every response. Not just the code — the thinking too.</strong>
+  </p>
+  <p align="center">
+    OpenCode plans and writes. Codex reviews the plan, the diff, or both. OpenCode fixes the issues. Repeat until clean.
+  </p>
+  <p align="center">
+    <a href="#install">Install</a> &middot;
+    <a href="#how-it-works">How It Works</a> &middot;
+    <a href="#configuration">Configuration</a> &middot;
+    <a href="spec.md">Spec</a>
+  </p>
+</p>
 
-Automatic Codex code review for [OpenCode](https://opencode.ai). Works silently in the background — Codex reviews every agent response and code diff as a second pair of eyes.
+---
 
-## What It Reviews
+### The problem
 
-Unlike the [Claude Code CRB plugin](https://github.com/amzer24/Claude-Codex-Review-Bridge-CRB), OCRB reviews two things on every response:
+Code review tools catch bugs in code. But the most expensive mistakes happen earlier — in the plan. By the time files are written, you're already committed to the approach.
 
-- **Plans and responses** — the agent's text output (catches bad reasoning, missed edge cases, security implications in proposed approaches)
-- **Code changes** — `git diff HEAD` when files have been modified (catches bugs, security issues, missing error handling)
+### The fix
+
+OCRB hooks into OpenCode's `session.idle` event and sends Codex two things on every response: the agent's last message (the plan, the reasoning, the proposed approach) and the git diff if one exists. Codex reviews both. Feedback routes back automatically. The loop runs until Codex says LGTM.
+
+Use any model you want in OpenCode. OCRB always uses Codex as the reviewer.
+
+---
+
+## How It Works
+
+```
+  You give OpenCode a task
+        |
+        v
+  OpenCode responds (plan, code, or both)
+        |
+        +-----> Has response text? --> Codex reviews the plan / reasoning
+        |                                   |
+        |                              Logical error? --> Feedback loops back. OpenCode continues.
+        |
+        +-----> Has git diff? -------> Codex reviews the code changes
+                                            |
+                                       LGTM ---------> Done. Silent pass.
+                                       MINOR --------> Feedback reinjected. OpenCode continues.
+                                       MAJOR --------> Alert surfaced to you directly.
+                                            |
+                                       (up to 3 rounds, then auto-exits)
+```
+
+**Catches plans before they become code** — If OpenCode proposes storing passwords in plaintext, Codex flags it before a single file is written. CRB can't do this. OCRB can.
+
+**Stack-aware prompts** — OCRB detects your project's languages and frameworks. A Next.js app gets different review focus than a Go microservice.
+
+**Works with any OpenCode model** — Use Claude, GPT, Gemini, or a local model in OpenCode. OCRB independently uses Codex for review regardless.
+
+**No style nits** — Codex only flags real problems: bugs, security issues, missing error handling, logical errors, architectural concerns. Not formatting.
+
+**Model presets** — Switch review depth on the fly:
+
+| Command | Model | Reasoning | Speed | Use when |
+|---------|-------|-----------|-------|----------|
+| `/ocrb fast` | gpt-5.4-mini | low | ~8s | Rapid iteration, quick checks |
+| `/ocrb default` | gpt-5.4 | medium | ~17s | Normal development |
+| `/ocrb deep` | gpt-5.3-codex | high | ~16s | Pre-merge, security-critical work |
+
+---
 
 ## Install
 
 ### Prerequisites
 
-- [OpenCode](https://opencode.ai) 
-- [Codex CLI](https://github.com/openai/codex): `npm install -g @openai/codex`
-- Codex authenticated: `codex login`
+- **[OpenCode](https://opencode.ai)** with any configured provider
+- **[Codex CLI](https://developers.openai.com/codex/cli)**: `npm install -g @openai/codex`
+- **Codex authenticated**: `codex login`
+- **Node.js** 18+ and **Git**
 
-### Add to OpenCode
+### Plugin install
 
-Add to your `opencode.json` (global: `~/.config/opencode/opencode.json`, or project-level):
+**1. Add to your OpenCode config** (`~/.config/opencode/opencode.json` for global, or `opencode.json` in your project):
 
 ```json
 {
@@ -27,68 +86,21 @@ Add to your `opencode.json` (global: `~/.config/opencode/opencode.json`, or proj
 }
 ```
 
-Then enable:
-
+**2. Enable OCRB:**
 ```
 /ocrb on
 ```
 
-## Usage
-
-| Command | Description |
-|---------|-------------|
-| `/ocrb on` | Enable Codex review |
-| `/ocrb off` | Disable Codex review |
-| `/ocrb status` | Show current state (model, toggle, counters) |
-| `/ocrb fast` | Switch to gpt-5.4-mini, low reasoning (~8s per review) |
-| `/ocrb deep` | Switch to gpt-5.3-codex, high reasoning (~16s per review) |
-| `/ocrb default` | Reset to default model and reasoning |
-| `/ocrb reset` | Clear loop counters (if review loop gets stuck) |
-| `/ocrb log` | Show recent review activity |
-| `/ocrb doctor` | Verify setup: prerequisites, auth, dry run |
-
-## How It Works
-
-Every time OpenCode's agent finishes responding (`session.idle` event):
-
-1. OCRB fetches the last assistant message and any `git diff HEAD`
-2. Passes both to `codex exec --output-schema ... --sandbox read-only`
-3. Codex returns structured JSON: `{ severity, issues, suggestions }`
-4. **LGTM** → silent, no output
-5. **MINOR** → feedback is reinjected as a follow-up prompt; agent addresses it
-6. **MAJOR** → surfaced as a toast notification + stderr; visible to the user
-
-Loop cap: max 3 reviews per session by default (configurable via `OCRB_MAX_ROUNDS`).
-
-## Config Files
-
-| File | Effect |
-|------|--------|
-| `~/.ocrb-enabled` | `1` = on, `0` / absent = off |
-| `~/.ocrb-model` | Override model (e.g. `gpt-5.4-mini`) |
-| `~/.ocrb-reasoning` | Override reasoning: `none\|minimal\|low\|medium\|high\|xhigh` |
-
-## Environment Variables
-
-| Variable | Description |
-|----------|-------------|
-| `OCRB_DRY_RUN=1` | Skip real Codex calls (for testing) |
-| `OCRB_DRY_RUN_SEVERITY` | Force severity in dry-run: `LGTM\|MINOR\|MAJOR` |
-| `OCRB_MAX_ROUNDS` | Max review rounds per session (default: 3, max: 5) |
-| `OCRB_TIMEOUT` | Codex timeout in seconds (default: 120) |
-| `OCRB_STATE_DIR` | Override state directory for round counters |
-
-## Development
-
-```bash
-bun install
-bun test
-bun run typecheck
+**3. Verify setup:**
+```
+/ocrb doctor
 ```
 
-### Local plugin install (dev)
+That's it. OpenCode will auto-install the plugin from npm on next launch.
 
-Point OpenCode at the local directory:
+### Local dev / testing
+
+Point the plugin field at the local path instead:
 
 ```json
 {
@@ -96,17 +108,110 @@ Point OpenCode at the local directory:
 }
 ```
 
-## Relation to CRB
+---
 
-This plugin is the OpenCode sibling of [Claude-Codex Review Bridge](https://github.com/amzer24/Claude-Codex-Review-Bridge-CRB). Key differences:
+## Usage
+
+OCRB is **disabled by default**. You control it:
+
+| Command | What it does |
+|---------|-------------|
+| `/ocrb on` | Enable Codex review |
+| `/ocrb off` | Disable Codex review |
+| `/ocrb status` | Check toggle, model, active sessions |
+| `/ocrb log` | View recent review activity |
+| `/ocrb reset` | Reset the review loop counters |
+| `/ocrb doctor` | Verify prerequisites, auth, config, and dry run |
+| `/ocrb fast` | Switch to faster low-reasoning reviews |
+| `/ocrb default` | Restore the default review model |
+| `/ocrb deep` | Switch to deeper pre-merge reviews |
+
+---
+
+## What Gets Reviewed
+
+On every `session.idle` event (each time OpenCode finishes a response), OCRB reviews:
+
+| Input | What Codex looks for |
+|-------|---------------------|
+| **Agent response / plan** | Logical errors, bad assumptions, security implications, missing edge cases, flawed architecture |
+| **Git diff** (if present) | Bugs, security vulnerabilities, missing error handling, unhandled cases |
+
+If only a plan was produced (no files changed), only the plan is reviewed. If only code changed (no interesting response), only the diff is reviewed. If both are present, Codex sees both.
+
+---
+
+## Severity Levels
+
+| Severity | Meaning | Action |
+|----------|---------|--------|
+| **LGTM** | Nothing to flag | Silent — loop ends, counter resets |
+| **MINOR** | Issues worth addressing | Reinjected as a follow-up prompt via `session.prompt()` — OpenCode addresses them automatically |
+| **MAJOR** | Critical bugs, security issues, fundamentally flawed reasoning | Surfaced as a stderr alert for your attention |
+
+---
+
+## Configuration
+
+| File / Variable | Default | Description |
+|-----------------|---------|-------------|
+| `~/.ocrb-enabled` | absent = off | `1` to enable, `0` to disable |
+| `~/.ocrb-model` | codex default | Override model (e.g. `gpt-5.4-mini`, `gpt-5.3-codex`) |
+| `~/.ocrb-reasoning` | `medium` | Reasoning effort: `none` `minimal` `low` `medium` `high` `xhigh` |
+| `OCRB_MAX_ROUNDS` | `3` | Review rounds per session before auto-exit (1–5) |
+| `OCRB_TIMEOUT` | `120` | Codex call timeout in seconds |
+| `OCRB_DRY_RUN=1` | - | Test the pipeline without calling Codex |
+| `OCRB_DRY_RUN_SEVERITY` | `LGTM` | Force a severity in dry-run: `LGTM` `MINOR` `MAJOR` |
+| `OCRB_STATE_DIR` | `$TMPDIR` | Override directory for round counter files |
+
+---
+
+## How It Differs from CRB
+
+OCRB is the OpenCode sibling of [Claude-Codex Review Bridge](https://github.com/amzer24/Claude-Codex-Review-Bridge-CRB).
 
 | | CRB (Claude Code) | OCRB (OpenCode) |
 |---|---|---|
-| Hook mechanism | Shell commands (`hooks.json`) | TypeScript plugin (`session.idle` event) |
-| Scope | Diff review only | Response text + diff review |
-| Feedback loop | `exit 2` → stderr reinject | `client.session.prompt()` API |
-| Config | `~/.crb-*` files | `~/.ocrb-*` files |
+| **What gets reviewed** | Git diff only | Agent response text + git diff |
+| **Hook mechanism** | Shell commands (`hooks.json`) | TypeScript plugin (`session.idle` event) |
+| **Feedback injection** | `exit 2` → stderr reinject | `client.session.prompt()` API |
+| **Git repo required** | Yes | No — response text reviewed regardless |
+| **Config files** | `~/.crb-*` | `~/.ocrb-*` |
+| **Language** | Bash | TypeScript (Bun) |
+| **Compatible with** | Claude Code | OpenCode (any provider) |
 
-## License
+The key difference: CRB is silent when the agent presents a plan with no file changes. OCRB catches it.
 
-MIT
+---
+
+## Architecture
+
+```
+src/
+  index.ts           Plugin entry — session.idle hook, re-entrancy guard, severity routing
+  review.ts          Codex invocation — builds prompt, calls codex exec, parses result
+  config.ts          Toggle + model/reasoning from ~/.ocrb-* files
+  format.ts          Output formatting for MINOR feedback and MAJOR alerts
+  guard.ts           Per-session round counter, path traversal protection
+  types.ts           Shared types
+hooks/
+  review-schema.json Structured output schema for codex --output-schema
+commands/
+  ocrb.md            /ocrb slash command
+skills/
+  ocrb/
+    SKILL.md         How OpenCode handles Codex review feedback
+tests/               25 unit tests — all pass with OCRB_DRY_RUN=1
+```
+
+---
+
+## How It Was Built
+
+OCRB was built using CRB — Claude Code wrote the TypeScript plugin while Codex reviewed every file edit. The first real review caught it reviewing itself: a plan to build user auth without authentication middleware, flagged as MAJOR before a line of that code was written.
+
+---
+
+<p align="center">
+  <a href="LICENSE">MIT License</a>
+</p>

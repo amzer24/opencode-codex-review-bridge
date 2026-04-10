@@ -78,13 +78,15 @@ Use any model you want in OpenCode. OCRB always uses Codex as the reviewer.
 
 ### Plugin install
 
-**1. Add to your OpenCode config** (`~/.config/opencode/opencode.json` for global, or `opencode.json` in your project):
+**1. Add to your OpenCode config** (`~/.config/opencode/opencode.json` for global, or `opencode.json` in your project root):
 
 ```json
 {
   "plugin": ["opencode-codex-review"]
 }
 ```
+
+> See [`opencode.example.json`](opencode.example.json) for a full example.
 
 **2. Enable OCRB:**
 ```

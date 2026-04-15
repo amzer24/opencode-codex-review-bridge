@@ -26,12 +26,14 @@ STATE_DIR="${OCRB_STATE_DIR:-${TMPDIR:-/tmp}}"
 LOG="$STATE_DIR/ocrb-review.log"
 LAST_ENTRY="$(tail -1 "$LOG" 2>/dev/null || echo 'no activity yet')"
 COUNTERS="$(ls "$STATE_DIR"/ocrb-review-*-count 2>/dev/null | wc -l | tr -d ' ')"
+DIFF_REVIEW="${OCRB_REVIEW_DIFF:-0}"
 ```
 
 Use the **actual values** from those reads. Format as:
 ```
 OCRB Status
   Review:    [enabled if TOGGLE=1, disabled if 0 or not set]
+  Diff:      [enabled if DIFF_REVIEW=1, disabled otherwise — set OCRB_REVIEW_DIFF=1 to enable]
   Model:     [actual MODEL value] ([actual REASONING value] reasoning)
   Log:       [actual LOG path]
   Last:      [actual LAST_ENTRY]

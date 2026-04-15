@@ -15,9 +15,10 @@ STAGE_DIR="$(dirname "$INSTALL_DIR")/.ocrb-stage.$$"
 OPENCODE_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/opencode"
 CONFIG_FILE="$OPENCODE_CONFIG_DIR/opencode.json"
 COMMANDS_DIR="$OPENCODE_CONFIG_DIR/commands"
-# file:// URL — OpenCode resolves bare strings as npm package names first;
-# explicit file:// avoids that and works cross-platform.
-PLUGIN_URL="file://$INSTALL_DIR/src/index.ts"
+# Point at the package DIRECTORY so OpenCode resolves the entry point via
+# package.json exports["./server"] → src/index.ts. Pointing directly at the
+# .ts file bypasses package.json and can break relative imports in the plugin.
+PLUGIN_URL="file://$INSTALL_DIR"
 
 echo ""
 echo "┌─────────────────────────────────────────┐"

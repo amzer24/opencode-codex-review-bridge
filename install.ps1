@@ -14,9 +14,11 @@ $StageDir     = "$env:LOCALAPPDATA\.ocrb-stage.$PID"
 $OpenCodeDir  = "$env:APPDATA\opencode"
 $ConfigFile   = "$OpenCodeDir\opencode.json"
 $CommandsDir  = "$OpenCodeDir\commands"
-# file:// URL — OpenCode resolves bare strings as npm package names first.
-# file:///C:/path/... is the correct Windows file URL format.
-$PluginUrl    = "file:///" + $InstallDir.Replace("\", "/") + "/src/index.ts"
+# Point at the package DIRECTORY so OpenCode resolves the entry point via
+# package.json exports["./server"] → src/index.ts. Pointing directly at the
+# .ts file bypasses package.json and can break relative imports in the plugin.
+# file:///C:/path is the correct Windows absolute file URL format.
+$PluginUrl    = "file:///" + $InstallDir.Replace("\", "/") + "/"
 
 Write-Host ""
 Write-Host "+------------------------------------------+" -ForegroundColor Cyan

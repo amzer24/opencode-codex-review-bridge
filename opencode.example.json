@@ -1,4 +1,4 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["opencode-codex-review"]
+  "plugin": ["/home/yourname/.ocrb/src/index.ts"]
 }

@@ -10,7 +10,7 @@
     <a href="#install">Install</a> &middot;
     <a href="#how-it-works">How It Works</a> &middot;
     <a href="#configuration">Configuration</a> &middot;
-    <a href="spec.md">Spec</a>
+    <a href="#how-it-differs-from-crb">vs CRB</a>
   </p>
 </p>
 
@@ -74,57 +74,61 @@ Use any model you want in OpenCode. OCRB always uses Codex as the reviewer.
 - **[OpenCode](https://opencode.ai)** with any configured provider
 - **[Codex CLI](https://github.com/openai/codex)**: `npm install -g @openai/codex`
 - **Codex authenticated**: `codex login`
-- **Node.js** 18+ and **Git**
+- **Node.js 18+** and **Git**
 
-### 1. Clone and install
+### One command — that's it
+
+**macOS / Linux:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/amzer24/opencode-codex-review/main/install.sh | bash
+```
+
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/amzer24/opencode-codex-review/main/install.ps1 | iex
+```
+
+The installer clones the repo to a standard location (`~/.ocrb` on Mac/Linux, `%LOCALAPPDATA%\ocrb` on Windows), installs dependencies, and automatically registers the plugin in your OpenCode config. No manual path editing needed.
+
+### After install
+
+```
+/ocrb on
+```
+```
+/ocrb doctor
+```
+
+That's it.
+
+<details>
+<summary><strong>Manual install / local dev</strong></summary>
+
+If you prefer to control where the repo lives:
 
 ```bash
-git clone https://github.com/amzer24/opencode-codex-review.git
-cd opencode-codex-review
+git clone https://github.com/amzer24/opencode-codex-review.git ~/my-plugins/ocrb
+cd ~/my-plugins/ocrb
 npm install
 ```
 
-### 2. Point OpenCode at the plugin
-
-Open your OpenCode config and add the plugin using an **absolute path**:
+Then add the path to your OpenCode config:
 
 **macOS / Linux** — `~/.config/opencode/opencode.json`
 ```json
 {
-  "plugin": ["/absolute/path/to/opencode-codex-review/src/index.ts"]
+  "plugin": ["/home/yourname/my-plugins/ocrb/src/index.ts"]
 }
 ```
 
 **Windows** — `%APPDATA%\opencode\opencode.json`
 ```json
 {
-  "plugin": ["C:\\Users\\YourName\\opencode-codex-review\\src\\index.ts"]
+  "plugin": ["C:/Users/YourName/my-plugins/ocrb/src/index.ts"]
 }
 ```
 
-> **Tip:** You can also place an `opencode.json` in your project root for per-project activation. See [`opencode.example.json`](opencode.example.json) for a full example.
-
-### 3. Enable OCRB
-
-```
-/ocrb on
-```
-
-### 4. Verify setup
-
-```
-/ocrb doctor
-```
-
-That's it. Restart OpenCode once after editing the config — plugins load on startup.
-
-<details>
-<summary><strong>Windows notes</strong></summary>
-
-- **Config location:** `%APPDATA%\opencode\opencode.json` (usually `C:\Users\YourName\AppData\Roaming\opencode\opencode.json`)
-- **Paths in JSON:** Use double backslashes (`\\`) or forward slashes (`/`) — both work
-- **Codex CLI on Windows:** Works natively — `npm install -g @openai/codex`, then `codex login`
-- **WSL option:** If you run OpenCode under WSL, use Linux paths (`/home/yourname/opencode-codex-review/...`)
+Restart OpenCode after editing the config.
 
 </details>
 

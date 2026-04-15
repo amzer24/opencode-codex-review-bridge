@@ -6,7 +6,7 @@ set -euo pipefail
 VERSION="v1.0.0"
 # Immutable commit SHA — tags can be force-moved; this cannot.
 # Update both when cutting a new release.
-COMMIT="aecfc7a13c46d936507b212be83688ce907223b5"
+COMMIT="a7f24c1d4bcef5ddce7fe3ea5c1f4446640f9c5a"
 REPO="https://github.com/amzer24/opencode-codex-review.git"
 INSTALL_DIR="$HOME/.ocrb"
 CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/opencode/opencode.json"

@@ -5,7 +5,7 @@ $ErrorActionPreference = "Stop"
 $Version    = "v1.0.0"
 # Immutable commit SHA — tags can be force-moved; this cannot.
 # Update both when cutting a new release.
-$Commit     = "aecfc7a13c46d936507b212be83688ce907223b5"
+$Commit     = "a7f24c1d4bcef5ddce7fe3ea5c1f4446640f9c5a"
 $Repo       = "https://github.com/amzer24/opencode-codex-review.git"
 $InstallDir = "$env:LOCALAPPDATA\ocrb"
 $ConfigFile = "$env:APPDATA\opencode\opencode.json"

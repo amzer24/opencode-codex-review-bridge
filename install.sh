@@ -6,7 +6,7 @@ set -euo pipefail
 VERSION="v1.0.0"
 # Immutable commit SHA — tags can be force-moved; this cannot.
 # Update both VERSION and COMMIT when cutting a new release.
-COMMIT="db27ba7aaee3a123a8a999b9155c5621432848ba"
+COMMIT="a28769b82dd90107bdfc3905c11961d8d51ccbe3"
 REPO="https://github.com/amzer24/opencode-codex-review.git"
 INSTALL_DIR="$HOME/.ocrb"
 # Stage under the same parent dir as INSTALL_DIR so mv is a rename,

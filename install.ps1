@@ -5,7 +5,7 @@ $ErrorActionPreference = "Stop"
 $Version    = "v1.0.0"
 # Immutable commit SHA — tags can be force-moved; this cannot.
 # Update both Version and Commit when cutting a new release.
-$Commit     = "a28769b82dd90107bdfc3905c11961d8d51ccbe3"
+$Commit     = "426726360439cdaa08c1ba28d16cb933debd97c6"
 $Repo       = "https://github.com/amzer24/opencode-codex-review.git"
 $InstallDir   = "$env:LOCALAPPDATA\ocrb"
 # Stage under the same parent dir as InstallDir so Move-Item is a rename,

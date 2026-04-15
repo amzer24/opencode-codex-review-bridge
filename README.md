@@ -80,12 +80,12 @@ Use any model you want in OpenCode. OCRB always uses Codex as the reviewer.
 
 **macOS / Linux:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/amzer24/opencode-codex-review/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/amzer24/opencode-codex-review-bridge/main/install.sh | bash
 ```
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/amzer24/opencode-codex-review/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/amzer24/opencode-codex-review-bridge/main/install.ps1 | iex
 ```
 
 The installer clones the repo to a standard location (`~/.ocrb` on Mac/Linux, `%LOCALAPPDATA%\ocrb` on Windows), installs dependencies, and automatically registers the plugin in your OpenCode config. No manual path editing needed.
@@ -107,26 +107,34 @@ That's it.
 If you prefer to control where the repo lives:
 
 ```bash
-git clone https://github.com/amzer24/opencode-codex-review.git ~/my-plugins/ocrb
+git clone https://github.com/amzer24/opencode-codex-review-bridge.git ~/my-plugins/ocrb
 cd ~/my-plugins/ocrb
 npm install
 ```
 
-Then add the path to your OpenCode config:
+Then copy the slash command and add the plugin to your OpenCode config:
+
+```bash
+# Copy slash command
+mkdir -p ~/.config/opencode/commands
+cp commands/ocrb.md ~/.config/opencode/commands/ocrb.md
+```
 
 **macOS / Linux** — `~/.config/opencode/opencode.json`
 ```json
 {
-  "plugin": ["/home/yourname/my-plugins/ocrb/src/index.ts"]
+  "plugin": ["file:///home/yourname/my-plugins/ocrb"]
 }
 ```
 
 **Windows** — `%APPDATA%\opencode\opencode.json`
 ```json
 {
-  "plugin": ["C:/Users/YourName/my-plugins/ocrb/src/index.ts"]
+  "plugin": ["file:///C:/Users/YourName/my-plugins/ocrb/"]
 }
 ```
+
+The plugin value must be a `file://` URL pointing to the **package directory** (not `src/index.ts`). OpenCode resolves the entry point via `package.json` exports.
 
 Restart OpenCode after editing the config.
 

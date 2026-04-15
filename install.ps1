@@ -6,7 +6,7 @@ $Version    = "v1.0.0"
 # Immutable commit SHA — tags can be force-moved; this cannot.
 # Update both Version and Commit when cutting a new release.
 $Commit     = "426726360439cdaa08c1ba28d16cb933debd97c6"
-$Repo       = "https://github.com/amzer24/opencode-codex-review.git"
+$Repo       = "https://github.com/amzer24/opencode-codex-review-bridge.git"
 $InstallDir   = "$env:LOCALAPPDATA\ocrb"
 # Stage under the same parent dir as InstallDir so Move-Item is a rename,
 # not a cross-filesystem copy — guarantees atomic swap on Windows.
@@ -54,7 +54,7 @@ if ((Test-Path $InstallDir) -and (-not (Test-Path "$InstallDir\.git"))) {
     Write-Host ""
     Write-Host "To fix, remove it and re-run:"
     Write-Host "  Remove-Item -Recurse -Force '$InstallDir'"
-    Write-Host "  irm https://raw.githubusercontent.com/amzer24/opencode-codex-review/main/install.ps1 | iex"
+    Write-Host "  irm https://raw.githubusercontent.com/amzer24/opencode-codex-review-bridge/main/install.ps1 | iex"
     exit 1
 }
 

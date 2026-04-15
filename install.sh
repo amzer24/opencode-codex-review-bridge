@@ -7,7 +7,7 @@ VERSION="v1.0.0"
 # Immutable commit SHA — tags can be force-moved; this cannot.
 # Update both VERSION and COMMIT when cutting a new release.
 COMMIT="426726360439cdaa08c1ba28d16cb933debd97c6"
-REPO="https://github.com/amzer24/opencode-codex-review.git"
+REPO="https://github.com/amzer24/opencode-codex-review-bridge.git"
 INSTALL_DIR="$HOME/.ocrb"
 # Stage under the same parent dir as INSTALL_DIR so mv is a rename,
 # not a cross-filesystem copy — guarantees atomic swap.
@@ -54,7 +54,7 @@ if [ -e "$INSTALL_DIR" ] && [ ! -d "$INSTALL_DIR/.git" ]; then
   echo ""
   echo "To fix, remove it and re-run:"
   echo "  rm -rf \"$INSTALL_DIR\""
-  echo "  curl -fsSL https://raw.githubusercontent.com/amzer24/opencode-codex-review/main/install.sh | bash"
+  echo "  curl -fsSL https://raw.githubusercontent.com/amzer24/opencode-codex-review-bridge/main/install.sh | bash"
   exit 1
 fi
 

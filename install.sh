@@ -12,8 +12,12 @@ INSTALL_DIR="$HOME/.ocrb"
 # Stage under the same parent dir as INSTALL_DIR so mv is a rename,
 # not a cross-filesystem copy — guarantees atomic swap.
 STAGE_DIR="$(dirname "$INSTALL_DIR")/.ocrb-stage.$$"
-CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/opencode/opencode.json"
-PLUGIN_PATH="$INSTALL_DIR/src/index.ts"
+OPENCODE_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/opencode"
+CONFIG_FILE="$OPENCODE_CONFIG_DIR/opencode.json"
+COMMANDS_DIR="$OPENCODE_CONFIG_DIR/commands"
+# file:// URL — OpenCode resolves bare strings as npm package names first;
+# explicit file:// avoids that and works cross-platform.
+PLUGIN_URL="file://$INSTALL_DIR/src/index.ts"
 
 echo ""
 echo "┌─────────────────────────────────────────┐"
@@ -140,9 +144,14 @@ else
   install_staged "Installing"
 fi
 
+# ── Copy slash command so OpenCode can discover it ────────────────────────────
+echo "✎  Installing /ocrb slash command"
+mkdir -p "$COMMANDS_DIR"
+cp "$INSTALL_DIR/commands/ocrb.md" "$COMMANDS_DIR/ocrb.md"
+
 # ── Patch OpenCode config ──────────────────────────────────────────────────────
 echo "✎  Registering plugin in OpenCode config"
-CONFIG_FILE="$CONFIG_FILE" PLUGIN_PATH="$PLUGIN_PATH" node "$INSTALL_DIR/scripts/patch-config.js"
+CONFIG_FILE="$CONFIG_FILE" PLUGIN_URL="$PLUGIN_URL" node "$INSTALL_DIR/scripts/patch-config.js"
 
 echo ""
 echo "✓  Done. Next steps:"

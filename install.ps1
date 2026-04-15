@@ -7,13 +7,16 @@ $Version    = "v1.0.0"
 # Update both Version and Commit when cutting a new release.
 $Commit     = "db27ba7aaee3a123a8a999b9155c5621432848ba"
 $Repo       = "https://github.com/amzer24/opencode-codex-review.git"
-$InstallDir = "$env:LOCALAPPDATA\ocrb"
+$InstallDir   = "$env:LOCALAPPDATA\ocrb"
 # Stage under the same parent dir as InstallDir so Move-Item is a rename,
 # not a cross-filesystem copy — guarantees atomic swap on Windows.
-$StageDir   = "$env:LOCALAPPDATA\.ocrb-stage.$PID"
-$ConfigFile = "$env:APPDATA\opencode\opencode.json"
-# OpenCode accepts forward slashes on Windows
-$PluginPath = $InstallDir.Replace("\", "/") + "/src/index.ts"
+$StageDir     = "$env:LOCALAPPDATA\.ocrb-stage.$PID"
+$OpenCodeDir  = "$env:APPDATA\opencode"
+$ConfigFile   = "$OpenCodeDir\opencode.json"
+$CommandsDir  = "$OpenCodeDir\commands"
+# file:// URL — OpenCode resolves bare strings as npm package names first.
+# file:///C:/path/... is the correct Windows file URL format.
+$PluginUrl    = "file:///" + $InstallDir.Replace("\", "/") + "/src/index.ts"
 
 Write-Host ""
 Write-Host "+------------------------------------------+" -ForegroundColor Cyan
@@ -152,10 +155,15 @@ if (Test-Path "$InstallDir\.git") {
     Install-Staged "Installing"
 }
 
+# ── Copy slash command so OpenCode can discover it ────────────────────────────
+Write-Host "Installing /ocrb slash command"
+New-Item -ItemType Directory -Force -Path $CommandsDir | Out-Null
+Copy-Item "$InstallDir\commands\ocrb.md" "$CommandsDir\ocrb.md" -Force
+
 # ── Patch OpenCode config ──────────────────────────────────────────────────────
 Write-Host "Registering plugin in OpenCode config"
 $env:CONFIG_FILE = $ConfigFile
-$env:PLUGIN_PATH = $PluginPath
+$env:PLUGIN_URL  = $PluginUrl
 node "$InstallDir/scripts/patch-config.js"
 
 Write-Host ""

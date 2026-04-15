@@ -5,7 +5,7 @@ set -euo pipefail
 
 VERSION="v1.0.0"
 # Immutable commit SHA — tags can be force-moved; this cannot.
-# Update both when cutting a new release.
+# Update both VERSION and COMMIT when cutting a new release.
 COMMIT="a7f24c1d4bcef5ddce7fe3ea5c1f4446640f9c5a"
 REPO="https://github.com/amzer24/opencode-codex-review.git"
 INSTALL_DIR="$HOME/.ocrb"
@@ -16,7 +16,7 @@ echo ""
 echo "┌─────────────────────────────────────────┐"
 echo "│  OpenCode Codex Review Bridge (OCRB)    │"
 echo "└─────────────────────────────────────────┘"
-echo "  Version: $VERSION ($COMMIT)"
+echo "  Version: $VERSION"
 echo ""
 
 # ── Prerequisites ──────────────────────────────────────────────────────────────
@@ -45,23 +45,62 @@ if [ -e "$INSTALL_DIR" ] && [ ! -d "$INSTALL_DIR/.git" ]; then
   echo "This usually means a previous install was interrupted."
   echo ""
   echo "To fix, remove it and re-run:"
-  echo "  rm -rf $INSTALL_DIR"
+  echo "  rm -rf \"$INSTALL_DIR\""
   echo "  curl -fsSL https://raw.githubusercontent.com/amzer24/opencode-codex-review/main/install.sh | bash"
   exit 1
 fi
 
-# ── Clone at pinned commit, or verify + update an existing install ─────────────
-verify_commit() {
-  local actual
-  actual=$(git -C "$INSTALL_DIR" rev-parse HEAD)
-  if [ "$actual" != "$COMMIT" ]; then
-    echo "Error: checkout HEAD is $actual, expected $COMMIT"
-    echo "The tag $VERSION may have been rewritten. Aborting for safety."
-    echo "To reinstall clean: rm -rf $INSTALL_DIR and re-run."
+# ── install_staged ─────────────────────────────────────────────────────────────
+# Clones + verifies + installs deps into a temp dir, then atomically swaps it
+# into $INSTALL_DIR. Both fresh installs and updates use this path so a failed
+# npm ci never leaves a half-finished tree that looks healthy on the next run.
+# The old install (if any) is kept as a backup and restored on swap failure.
+install_staged() {
+  local label="$1"   # "Installing" or "Updating"
+  local stage backup
+  stage=$(mktemp -d)
+  trap 'rm -rf "$stage"' RETURN
+
+  echo "↓  $label $VERSION to $INSTALL_DIR"
+
+  # Clone at pinned tag into staging area
+  if ! git -c advice.detachedHead=false clone --quiet \
+        --branch "$VERSION" --depth 1 "$REPO" "$stage"; then
+    echo "Error: git clone failed."
     exit 1
+  fi
+
+  # Verify the cloned commit matches the pinned SHA
+  local actual
+  actual=$(git -C "$stage" rev-parse HEAD)
+  if [ "$actual" != "$COMMIT" ]; then
+    echo "Error: cloned HEAD is $actual, expected $COMMIT"
+    echo "The tag $VERSION may have been rewritten. Aborting for safety."
+    exit 1
+  fi
+
+  # Install deps from lockfile; --ignore-scripts blocks postinstall execution
+  if ! (cd "$stage" && npm ci --ignore-scripts --silent); then
+    echo "Error: dependency install failed."
+    exit 1
+  fi
+
+  # Atomic swap: back up old install → move stage into place → drop backup
+  if [ -d "$INSTALL_DIR" ]; then
+    backup="${INSTALL_DIR}.bak.$$"
+    mv "$INSTALL_DIR" "$backup"
+    if ! mv "$stage" "$INSTALL_DIR"; then
+      echo "Error: swap failed — restoring previous install."
+      mv "$backup" "$INSTALL_DIR"
+      exit 1
+    fi
+    rm -rf "$backup"
+  else
+    mv "$stage" "$INSTALL_DIR"
   fi
 }
 
+# ── Clone or update ────────────────────────────────────────────────────────────
 if [ -d "$INSTALL_DIR/.git" ]; then
   existing_remote=$(git -C "$INSTALL_DIR" remote get-url origin 2>/dev/null || echo "")
   if [ "$existing_remote" != "$REPO" ]; then
@@ -75,23 +114,10 @@ if [ -d "$INSTALL_DIR/.git" ]; then
   if [ "$current" = "$COMMIT" ]; then
     echo "✓  Already at $VERSION — nothing to update."
   else
-    echo "↻  Updating $INSTALL_DIR to $VERSION"
-    git -C "$INSTALL_DIR" fetch --quiet
-    git -C "$INSTALL_DIR" checkout --quiet "$COMMIT"
-    verify_commit
+    install_staged "Updating to"
   fi
 else
-  echo "↓  Installing $VERSION to $INSTALL_DIR"
-  git clone --quiet --branch "$VERSION" --depth 1 "$REPO" "$INSTALL_DIR"
-  verify_commit
-fi
-
-# ── Dependencies (reproducible install from lockfile) ─────────────────────────
-echo "↓  Installing dependencies"
-if ! npm --prefix "$INSTALL_DIR" ci --silent; then
-  echo ""
-  echo "Error: dependency install failed. Check the output above for details."
-  exit 1
+  install_staged "Installing"
 fi
 
 # ── Patch OpenCode config ──────────────────────────────────────────────────────

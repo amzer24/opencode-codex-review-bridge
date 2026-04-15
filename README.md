@@ -72,43 +72,61 @@ Use any model you want in OpenCode. OCRB always uses Codex as the reviewer.
 ### Prerequisites
 
 - **[OpenCode](https://opencode.ai)** with any configured provider
-- **[Codex CLI](https://developers.openai.com/codex/cli)**: `npm install -g @openai/codex`
+- **[Codex CLI](https://github.com/openai/codex)**: `npm install -g @openai/codex`
 - **Codex authenticated**: `codex login`
 - **Node.js** 18+ and **Git**
 
-### Plugin install
+### 1. Clone and install
 
-**1. Add to your OpenCode config** (`~/.config/opencode/opencode.json` for global, or `opencode.json` in your project root):
+```bash
+git clone https://github.com/amzer24/opencode-codex-review.git
+cd opencode-codex-review
+npm install
+```
 
+### 2. Point OpenCode at the plugin
+
+Open your OpenCode config and add the plugin using an **absolute path**:
+
+**macOS / Linux** — `~/.config/opencode/opencode.json`
 ```json
 {
-  "plugin": ["opencode-codex-review"]
+  "plugin": ["/absolute/path/to/opencode-codex-review/src/index.ts"]
 }
 ```
 
-> See [`opencode.example.json`](opencode.example.json) for a full example.
+**Windows** — `%APPDATA%\opencode\opencode.json`
+```json
+{
+  "plugin": ["C:\\Users\\YourName\\opencode-codex-review\\src\\index.ts"]
+}
+```
 
-**2. Enable OCRB:**
+> **Tip:** You can also place an `opencode.json` in your project root for per-project activation. See [`opencode.example.json`](opencode.example.json) for a full example.
+
+### 3. Enable OCRB
+
 ```
 /ocrb on
 ```
 
-**3. Verify setup:**
+### 4. Verify setup
+
 ```
 /ocrb doctor
 ```
 
-That's it. OpenCode will auto-install the plugin from npm on next launch.
+That's it. Restart OpenCode once after editing the config — plugins load on startup.
 
-### Local dev / testing
+<details>
+<summary><strong>Windows notes</strong></summary>
 
-Point the plugin field at the local path instead:
+- **Config location:** `%APPDATA%\opencode\opencode.json` (usually `C:\Users\YourName\AppData\Roaming\opencode\opencode.json`)
+- **Paths in JSON:** Use double backslashes (`\\`) or forward slashes (`/`) — both work
+- **Codex CLI on Windows:** Works natively — `npm install -g @openai/codex`, then `codex login`
+- **WSL option:** If you run OpenCode under WSL, use Linux paths (`/home/yourname/opencode-codex-review/...`)
 
-```json
-{
-  "plugin": ["/path/to/opencode-codex-review/src/index.ts"]
-}
-```
+</details>
 
 ---
 

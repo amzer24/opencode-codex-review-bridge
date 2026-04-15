@@ -6,9 +6,12 @@ set -euo pipefail
 VERSION="v1.0.0"
 # Immutable commit SHA — tags can be force-moved; this cannot.
 # Update both VERSION and COMMIT when cutting a new release.
-COMMIT="a7f24c1d4bcef5ddce7fe3ea5c1f4446640f9c5a"
+COMMIT="fd2ba7cdfa01d5e3a5418bd99163da11a962996d"
 REPO="https://github.com/amzer24/opencode-codex-review.git"
 INSTALL_DIR="$HOME/.ocrb"
+# Stage under the same parent dir as INSTALL_DIR so mv is a rename,
+# not a cross-filesystem copy — guarantees atomic swap.
+STAGE_DIR="$(dirname "$INSTALL_DIR")/.ocrb-stage.$$"
 CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/opencode/opencode.json"
 PLUGIN_PATH="$INSTALL_DIR/src/index.ts"
 
@@ -51,53 +54,70 @@ if [ -e "$INSTALL_DIR" ] && [ ! -d "$INSTALL_DIR/.git" ]; then
 fi
 
 # ── install_staged ─────────────────────────────────────────────────────────────
-# Clones + verifies + installs deps into a temp dir, then atomically swaps it
-# into $INSTALL_DIR. Both fresh installs and updates use this path so a failed
-# npm ci never leaves a half-finished tree that looks healthy on the next run.
-# The old install (if any) is kept as a backup and restored on swap failure.
+# Clones + verifies + installs into a staging dir on the SAME filesystem as
+# INSTALL_DIR (so mv is a rename, not copy+delete), then atomically swaps.
+# The old install is kept as a backup until the swap succeeds; on failure the
+# partial target is removed before the backup is restored.
 install_staged() {
-  local label="$1"   # "Installing" or "Updating"
-  local stage backup
-  stage=$(mktemp -d)
-  trap 'rm -rf "$stage"' RETURN
+  local label="$1"
+  local backup="${INSTALL_DIR}.bak.$$"
 
-  echo "↓  $label $VERSION to $INSTALL_DIR"
+  echo "↓  $label $VERSION"
+
+  # Clean up any leftover stage from a previous interrupted run
+  rm -rf "$STAGE_DIR"
+  mkdir -p "$STAGE_DIR"
+
+  # Ensure stage is removed on exit if we abort before the swap
+  trap 'rm -rf "$STAGE_DIR"' RETURN
 
   # Clone at pinned tag into staging area
   if ! git -c advice.detachedHead=false clone --quiet \
-        --branch "$VERSION" --depth 1 "$REPO" "$stage"; then
+        --branch "$VERSION" --depth 1 "$REPO" "$STAGE_DIR"; then
     echo "Error: git clone failed."
     exit 1
   fi
 
   # Verify the cloned commit matches the pinned SHA
   local actual
-  actual=$(git -C "$stage" rev-parse HEAD)
+  actual=$(git -C "$STAGE_DIR" rev-parse HEAD)
   if [ "$actual" != "$COMMIT" ]; then
     echo "Error: cloned HEAD is $actual, expected $COMMIT"
     echo "The tag $VERSION may have been rewritten. Aborting for safety."
     exit 1
   fi
 
-  # Install deps from lockfile; --ignore-scripts blocks postinstall execution
-  if ! (cd "$stage" && npm ci --ignore-scripts --silent); then
+  # Install deps from lockfile; --ignore-scripts blocks postinstall execution.
+  # Use cd, not --prefix, to avoid npm's dir-name-vs-package-name quirk.
+  if ! (cd "$STAGE_DIR" && npm ci --ignore-scripts --silent); then
     echo "Error: dependency install failed."
     exit 1
   fi
 
-  # Atomic swap: back up old install → move stage into place → drop backup
+  # Atomic swap using rename (same filesystem guaranteed):
+  #   1. Move old install to backup
+  #   2. Rename stage into place
+  #   3. On any failure: remove partial target, restore backup
   if [ -d "$INSTALL_DIR" ]; then
-    backup="${INSTALL_DIR}.bak.$$"
     mv "$INSTALL_DIR" "$backup"
-    if ! mv "$stage" "$INSTALL_DIR"; then
-      echo "Error: swap failed — restoring previous install."
-      mv "$backup" "$INSTALL_DIR"
-      exit 1
-    fi
-    rm -rf "$backup"
-  else
-    mv "$stage" "$INSTALL_DIR"
   fi
+
+  if ! mv "$STAGE_DIR" "$INSTALL_DIR"; then
+    echo "Error: failed to move update into place — restoring previous install."
+    # Remove any partial target left by the failed mv before restoring
+    rm -rf "$INSTALL_DIR"
+    if [ -d "$backup" ]; then
+      if ! mv "$backup" "$INSTALL_DIR"; then
+        echo "Error: restore also failed. Your previous install is at:"
+        echo "  $backup"
+        echo "Manually run: mv \"$backup\" \"$INSTALL_DIR\""
+      fi
+    fi
+    exit 1
+  fi
+
+  # Swap succeeded — drop the backup
+  rm -rf "$backup"
 }
 
 # ── Clone or update ────────────────────────────────────────────────────────────
